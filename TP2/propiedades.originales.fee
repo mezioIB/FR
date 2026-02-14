@@ -1,0 +1,27 @@
+# Secciones eficaces microscópicas constantes
+nu = 2.44
+
+# Propiedades del Uranio
+Sigma_a_U5 = 683 # unidades en barns
+Sigma_f_U5 = 582 # unidades en barns
+Sigma_a_U8 = 2.71 # unidades en barns
+
+# Propiedades del Grafito
+Sigma_a_C = 0.0034
+Sigma_s_C = 4.8
+Chi_C = 0.158
+
+# Propiedades del Agua
+Sigma_a_H2O = 0.664
+Sigma_s_H2O = 103.0
+Chi_H2O = 0.948
+
+# Propiedades del Agua pesada
+Sigma_a_D2O = 0.001
+Sigma_s_D2O = 13.6
+Chi_D2O = 0.57
+
+# Propiedades del Berilio
+Sigma_a_Be = 0.0095
+Sigma_s_Be = 7.0
+Chi_Be = 0.209

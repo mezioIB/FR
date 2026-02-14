@@ -1,0 +1,72 @@
+# TP 2 de Física de reactores, fórmula de 4 factores
+# Cátedra de Física de Reactores: Aníbal Blanco, Federico Mezio, Karen Medrano.
+#
+# ------------------------------------------------------------------------------------------------
+# 
+# Para correr este ejemplo se puede ejecutar:
+# feenox CuatroFactores.1D.E.fee 1 0.711 0.001 4000 ; gnuplot -p -e "plot 'out.mod1.E0.711.1D.txt' u 1:3 t 'f' w l, '' u 1:4 t 'p' w l , '' u 1:5 t 'k' w l"
+#
+# Donde los parámetros de entrada están ordenados, y significan
+#  1) Tipo de moderador: 1-> C, 2-> H2O, 3-> D2O, 4-> Be
+#  2) Valor para el enriquecimiento
+#  3) Mínimo valor posible para la relación de moderación
+#  4) Máximo valor posible para la relación de moderación
+
+
+#************************************************************
+# Asignacióon de los parámetros de entrada
+#************************************************************
+# Moderador elegido
+Mod = $1
+# La variable E es el enriquecimiento en 235U
+E = $2
+# La variable R se usa como la relación de moderación
+Rmin = $3
+Rmax = $4
+#************************************************************
+
+#************************************************************
+# Constantes modificables cuando lo solicita el enunciado
+#************************************************************
+INCLUDE propiedades.originales.fee
+#************************************************************
+
+#************************************************************
+#************************************************************
+# Definición de funciones
+#************************************************************
+#************************************************************
+INCLUDE funciones.comunes.fee
+
+VAR R
+# Densidad numérica U5
+N5 = E*N8/(100-E)
+# Densidad numérica moderador
+NM(R) := R*(N5+N8)
+
+# Eta, factor de reproduccion
+Eta(R) := E/100*nu*Sigma_f_U5/((1-E/100)*Sigma_a_U8+E/100*Sigma_a_U5)
+
+# factor de aprovechamiento térmico
+f(R) := (N5*Sigma_a_U5+N8*Sigma_a_U8)/(N5*Sigma_a_U5+N8*Sigma_a_U8+NM(R)*Sigma_a)
+
+# Probabilidad de escape a las resonancias
+p(R) := exp((E/100-1)/(Chi*(R+0.001)*Sigma_s)*3.85*((R+0.001)*Sigma_s/(1-E/100))^(0.415))
+
+# Factor de multiplicación
+Kinf(R) := Eta(R)*f(R)*p(R)
+
+
+# Busco el máximo
+RKinfMax = func_min(-Kinf(R),R,Rmin,Rmax)
+
+#************************************************************
+#************************************************************
+# Exporto los resultados
+#************************************************************
+#************************************************************
+
+#PRINT SEP , TEXT "\# (R,Kinf)_max = (" %.4f RKinfMax %.8f Kinf(RKinfMax) TEXT ")"
+PRINT RKinfMax Kinf(RKinfMax)
+PRINT_FUNCTION  Eta f p Kinf MIN Rmin MAX Rmax STEP (Rmax-Rmin)/1000 FILE out.mod$1.E$2.1D.txt
+

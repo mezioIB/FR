@@ -1,0 +1,12 @@
+# Vectores de propiedades del moderador
+VECTOR Chi_M SIZE 4 DATA Chi_C Chi_H2O Chi_D2O Chi_Be
+VECTOR Sigma_a_M SIZE 4 DATA Sigma_a_C Sigma_a_H2O Sigma_a_D2O Sigma_a_Be
+VECTOR Sigma_s_M SIZE 4 DATA Sigma_s_C Sigma_s_H2O Sigma_s_D2O Sigma_s_Be
+
+# Selección del tipo de moderador
+Chi = Chi_M(Mod)
+Sigma_a = Sigma_a_M(Mod)
+Sigma_s = Sigma_s_M(Mod)
+
+# Densidad numérica U8
+N8 = 10.6*238/270*6.022E23/238
