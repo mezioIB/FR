@@ -1,0 +1,75 @@
+# feenox 03.CuatroFactores.fee 1 > "03.mod1.datos.txt"
+# gnuplot 03.conf_3d.gnuplot -p -e "set output '03.mod1.3d.png'; splot '03.mod1.datos.txt' u 1:2:6 t 'K' w pm3d"
+# cat 03.mod1.datos.txt | gawk '{if($2~/0.711/ && $6>Kmax){Kmax=$6;Ropt=$1}}; END {print Ropt" "Kmax}' > 03.mod1.kmax.txt
+# cat 03.mod1.datos.txt | awk '{if($6>Kinf[$2*1]){Kinf[$2*1]=$6;Ropt[$2*1]=$1}}; END{for(i=0.711;i<95;i+=0.95)print i" "Ropt[i]" "Kinf[i]}' > 03.mod1.kmax_E.txt
+
+#************************************************************
+# Variables a modificar
+#************************************************************
+# La variable R se usa como la relación de moderación, Rmax es el R máximo
+Rmax = 4000
+# La variable E es el enriquecimiento en 235U, Emax es el E máximo
+Emax = 95
+# Tipo de moderador: 1-> C, 2-> H2O, 3-> D2O, 4-> Be
+Mod = $1
+#************************************************************
+
+#************************************************************
+# Constantes modificables cuando lo solicita el enunciado
+#************************************************************
+# Secciones eficaces microscópicas constantes
+Sigma_a_U5 = 683 # unidades en barns
+Sigma_f_U5 = 582 # unidades en barns
+Sigma_a_U8 = 2.71 # unidades en barns
+Sigma_a_C = 0.0034
+Sigma_s_C = 4.8
+Chi_C = 0.158
+Sigma_a_H2O = 0.664
+Sigma_s_H2O = 103.0
+Chi_H2O = 0.948
+Sigma_a_D2O = 0.001
+Sigma_s_D2O = 13.6
+Chi_D2O = 0.57
+Sigma_a_Be = 0.0095
+Sigma_s_Be = 7.0
+Chi_Be = 0.209
+nu = 2.44
+#************************************************************
+
+
+#************************************************************
+#************************************************************
+# A partir de aquí, no resulta necesario hacer modificaciones para cumplir con los enunciados
+#************************************************************
+#************************************************************
+# Vectores de propiedades del moderador
+VECTOR Chi_M SIZE 4 DATA Chi_C Chi_H2O Chi_D2O Chi_Be
+VECTOR Sigma_a_M SIZE 4 DATA Sigma_a_C Sigma_a_H2O Sigma_a_D2O Sigma_a_Be
+VECTOR Sigma_s_M SIZE 4 DATA Sigma_s_C Sigma_s_H2O Sigma_s_D2O Sigma_s_Be
+# Selección del tipo de moderador
+Chi = Chi_M(Mod)
+Sigma_a = Sigma_a_M(Mod)
+Sigma_s = Sigma_s_M(Mod)
+
+# Densidad numérica U8
+N8 = 10.6*238/270*6.022E23/238
+# Densidad numérica U5
+N5(E) := E*N8/(100-E)
+# Densidad numérica moderador
+NM(R,E) := R*(N5(E)+N8)
+
+# Eta, factor de reproduccion
+Eta(R,E) := E/100*nu*Sigma_f_U5/((1-E/100)*Sigma_a_U8+E/100*Sigma_a_U5)
+
+# factor de aprovechamiento térmico
+f(R,E) := (N5(E)*Sigma_a_U5+N8*Sigma_a_U8)/(N5(E)*Sigma_a_U5+N8*Sigma_a_U8+NM(R,E)*Sigma_a)
+
+# Probabilidad de escape a las resonancias
+p(R,E) := exp((E/100-1)/(Chi*(R+0.001)*Sigma_s)*3.85*((R+0.001)*Sigma_s/(1-E/100))^(0.415))
+
+# Factor de multiplicación
+Kinf(R,E) := Eta(R,E)*f(R,E)*p(R,E)
+
+
+PRINT_FUNCTION  Eta f p Kinf MIN 0.001 0.711 MAX Rmax Emax STEP Rmax/1000 Emax/100
+

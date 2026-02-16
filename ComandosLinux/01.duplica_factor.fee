@@ -1,0 +1,14 @@
+# Ejemplo donde se realiza una operación simple y se imprime en pantalla un mensaje
+#
+# Se ejecuta con el comando:
+# feenox 01.duplica_factor.fee número
+# 
+
+# Valor por defecto para el argumento de entrada
+DEFAULT_ARGUMENT_VALUE 1 3.0
+
+# Lectura del valor de entrada
+factor = $1
+
+salida = 2*factor
+PRINT SEP " " TEXT "2 *" factor "=" salida

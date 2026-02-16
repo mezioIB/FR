@@ -1,0 +1,9 @@
+# Ejemplo donde se realiza una operación simple y se imprime en pantalla un mensaje
+#
+# Se ejecuta con el comando:
+# feenox 01.duplica_tres.fee
+# 
+
+entrada = 3
+salida = 2*entrada
+PRINT SEP " " TEXT "2 *" entrada "=" salida
