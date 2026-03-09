@@ -1,0 +1,141 @@
+# TP 3 de Física de reactores, Cinética Puntual
+# Cátedra de Física de Reactores: Aníbal Blanco, Roberto Maturana, Federico Mezio, Gustavo Saravia
+# Input desarrollado por Héctor Lestani y Alexis Weir
+# Resolución de la Ecuación In-Hour
+# 
+# Argumentos de entrada
+# 1: tipo de combustible: 1=U235 2=U233 3=Pu239
+# 2: Reactividad para la cual se desean obtener los polos y residuos
+# 3: Paso de reactividad a usarse en las iteraciones
+#
+# Vectores de salida: 
+# (hay que comentar y descomentar líneas al final para cambiar de opción)
+# Opción 1:
+#   Fila 1: información de la reactividad insertada (sin unidades y en U$D)
+#   Fila 2: Los polos de N(s) para la reactividad elegida: w(i)
+#   Fila 3: Los residuos de N(s) para la reactividad elegida: A(i)
+# Opción 2:
+#   Fila 1: la reactividad insertada y el mayor de los polos de N(s)
+# Opción 3:
+#   Columna 1: w(i)
+#   Columna 2: A(i)
+
+
+#************************************************************
+# implementación de los argumentos de entrada
+#************************************************************
+# Por defecto se elige U235 (tipo 1)
+DEFAULT_ARGUMENT_VALUE 1 1
+tipoCombustible = $1
+
+# Por defecto se introduce una reactividad de 100[pcm]
+DEFAULT_ARGUMENT_VALUE 2 100e-5
+rho = $2
+
+# Por defecto se elige un paso de iteración de 1e-5 en el
+# algoritmo de búsqueda de polos
+DEFAULT_ARGUMENT_VALUE 3 1e-5
+pasito = $3
+
+
+#************************************************************
+# Definición de vectores
+#************************************************************
+I = 6                   # Se va a trabajar con 6 grupos de precursores
+VECTOR beta   SIZE I    # vector donde se guarda la fracción de cada grupo de neutrones retardados
+VECTOR lambda SIZE I    # vector donde se guarda la vida media de cada grupo de neutrones retardados
+VECTOR c      SIZE I    # vector donde se guarda la concentración de cada grupoi de neutrones retardados
+VECTOR w      SIZE I+1  # vector donde se guardan los polos de la ecuación de N(s)
+VECTOR A      SIZE I+1  # vector donde se guardan los residuos de la ecuación de N(s)
+
+
+
+#************************************************************
+# Declaración de datos nucleares
+#************************************************************
+# Vida media n's prompt [s]
+LAMBDA = 100e-6  # 100 microsegundos
+# Vida media precursores [1/s]
+VECTOR lambdaU235  SIZE 6 DATA 0.01240 0.03050 0.11100 0.30100 1.14000 3.01000
+VECTOR lambdaU233  SIZE 6 DATA 0.01260 0.03370 0.13900 0.32500 1.13000 2.50000
+VECTOR lambdaPu239 SIZE 6 DATA 0.01280 0.03010 0.12400 0.32500 1.12000 2.69000 
+# Fracción de neutrones retardados
+VECTOR betaU235  SIZE 6 DATA 0.000215 0.001424 0.001274 0.002568 0.000748 0.000273
+VECTOR betaU233  SIZE 6 DATA 0.00023  0.00080  0.00067  0.00074  0.00014  0.00009 
+VECTOR betaPu239 SIZE 6 DATA 0.00007  0.00063  0.00045  0.00069  0.00018  0.00090 
+
+# Asigno los betas y lambdas en función del tipo de combustible elegido
+IF tipoCombustible=1 #Entonces es U235
+   # PRINT "Trabajando con U235"
+   lambda[i] = lambdaU235[i]
+   beta[i] = betaU235[i]
+ELSE
+   IF tipoCombustible=2 #Entonces es U233
+      # PRINT "Trabajando con U233"
+      lambda[i] = lambdaU233[i]
+      beta[i] = betaU233[i]
+   ELSE
+      IF tipoCombustible=3 #Entonces es Pu239
+         # PRINT "Trabajando con Pu239"
+         lambda[i] = lambdaPu239[i]
+         beta[i] = betaPu239[i]
+      ELSE
+         PRINT "Error!! el tipo de combustible $1 no está en la lista"
+         ABORT
+      ENDIF
+   ENDIF
+ENDIF
+
+beta1grupo = sum(beta[i],i,1,6)
+lambda1grupo = beta1grupo/(sum(beta[i]/lambda[i],i,1,6))
+#PRINT_VECTOR beta lambda       # con esta línea se puede mostrar en pantalla los vectores de beta y lambda
+#PRINT beta1grupo lambda1grupo  # con esta línea se puede mostrar en pantalla el beta total y el lambda equialente
+
+
+#************************************************************
+# Definición y cálculo de condiciones iniciales de equilibrio
+#************************************************************
+n_0 = 1                                    # Se normaliza a un neutrón inicial
+c_0[i] = beta[i]/(LAMBDA*lambda[i]) * n_0  # Concentración de equilibrio de los precursores
+
+#************************************************************
+# Definición de la relación entre la reactividad y "s".
+# Esta es la ecuación "In-Hour"
+#************************************************************
+reactividad(s) := LAMBDA*s + sum((beta[i]*s)/(s+lambda[i]), i, 1, I)
+
+
+#************************************************************
+# Se busca qué valores de w(i) satisfacen la ecuación In-Hour,
+# cuando se tiene una reacitividad rho
+#************************************************************
+
+# Definición de constantes a usarse en el proceso iterativo de búsqueda de los polos
+maximo = 5
+minimo = -1e8
+
+# Búsqueda de los 7 polos
+w[1] = root(reactividad(s)-rho, s, -lambda[1]+pasito, maximo)
+w[i]<2:I> = root(reactividad(s)-rho, s, -lambda[i]+pasito, -lambda[i-1]-pasito)
+w[7] = root(reactividad(s)-rho, s, minimo, -lambda[6]-pasito)
+
+
+#************************************************************
+# Residuos, Bell y Glasstone ec 9.28
+#************************************************************
+A[i] = n_0 * ( LAMBDA + sum(beta[j]/(w[i]+lambda[j]), j, 1, I)) / ( LAMBDA + sum((beta[j]*lambda[j])/(w[i]+lambda[j])^2, j, 1, I) )
+
+
+#************************************************************
+# Se envían los resultados a la pantalla
+#************************************************************
+# Opción 1: enviar todo a pantalla
+#PRINT TEXT "rho = " rho rho/beta1grupo " beta = " beta1grupo " lambda = " lambda1grupo
+#PRINT TEXT "w = " w
+#PRINT TEXT "A = " A
+
+# Opción 2: enviar solo rho y w(1) a pantalla
+#PRINT rho w[1]
+
+# Opción 3: escribir los términos de n(t)
+PRINT_VECTOR w A

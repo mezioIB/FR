@@ -1,0 +1,158 @@
+# TP 3 de Física de reactores, Cinética Puntual
+# Cátedra de Física de Reactores: Aníbal Blanco, Roberto Maturana, Federico Mezio, Gustavo Saravia
+# Input desarrollado por Héctor Lestani y Alexis Weir
+# 
+# Argumentos de entrada:
+# 1: tipo de combustible: 1=U235 2=U233 3=Pu239
+# 2: Reactividad para la cual se desean obtener el transitorio
+# 3: tiempo de la simulación [s]
+# 4: coeficiente de realimentación [pcm/%]
+# 
+# Columnas de salida:
+# 1: Tiempo [s]
+# 2: Población de neutrones sin realimentación
+# 3: Población de neutrones con realimentación
+
+
+#************************************************************
+# Implementación de los argumentos de entrada (no modificar)
+#************************************************************
+# Por defecto se elige U235 (tipo 1)
+DEFAULT_ARGUMENT_VALUE 1 1
+tipoCombustible = $1
+
+# Por defecto se introduce una reactividad de 100[pcm]
+DEFAULT_ARGUMENT_VALUE 2 100e-5
+Rho = $2
+
+# Por defecto se simulan 60[s]
+DEFAULT_ARGUMENT_VALUE 3 60
+end_time = $3
+
+# Por defecto se utiliza una realimentación de -20.11[pcm/%]
+DEFAULT_ARGUMENT_VALUE 4 -20.11
+Alfa_Pot = $4
+
+
+#************************************************************
+# Otras variables que se pueden a modificar
+#************************************************************
+# Paso de tiempo de la simulación, en segundos.
+delta_t = 0.1
+
+# Condición inicial en n
+n_0 = 1
+
+# Condición inicial en Ci ("-1" implica concentraciones de equilibrio)
+Cinicial = -1
+
+
+
+#************************************************************
+# Declaración de datos nucleares
+#************************************************************
+# Por defecto se usan 6 grupos de precursores
+N = 6
+# Por defecto se usa 100 microsegundos para la vida media de los n's prompt
+Lambda = 100e-6
+
+# Vida media precursores [1/s]
+VECTOR lambdaU235  SIZE 6 DATA 0.01240 0.03050 0.11100 0.30100 1.14000 3.01000
+VECTOR lambdaU233  SIZE 6 DATA 0.01260 0.03370 0.13900 0.32500 1.13000 2.50000
+VECTOR lambdaPu239 SIZE 6 DATA 0.01280 0.03010 0.12400 0.32500 1.12000 2.69000 
+# Fracción de neutrones retardados
+VECTOR betaU235  SIZE 6 DATA 0.000215 0.001424 0.001274 0.002568 0.000748 0.000273
+VECTOR betaU233  SIZE 6 DATA 0.00023  0.00080  0.00067  0.00074  0.00014  0.00009 
+VECTOR betaPu239 SIZE 6 DATA 0.00007  0.00063  0.00045  0.00069  0.00018  0.00090 
+
+IF step_transient=0
+  VECTOR beta   SIZE 6    # vector donde se guarda la fracción de cada grupo de neutrones retardados
+  VECTOR lambda SIZE 6    # vector donde se guarda la vida media de cada grupo de neutrones retardados
+  
+  # Asigno los betas y lambdas en función del tipo de combustible elegido
+  IF tipoCombustible=1 #Entonces es U235
+     # PRINT "Trabajando con U235"
+     lambda[i] = lambdaU235[i]
+     beta[i] = betaU235[i]
+  ELSE
+     IF tipoCombustible=2 #Entonces es U233
+        # PRINT "Trabajando con U233"
+        lambda[i] = lambdaU233[i]
+        beta[i] = betaU233[i]
+     ELSE
+        IF tipoCombustible=3 #Entonces es Pu239
+           # PRINT "Trabajando con Pu239"
+           lambda[i] = lambdaPu239[i]
+           beta[i] = betaPu239[i]
+        ELSE
+           PRINT "Error!! el tipo de combustible $1 no está en la lista"
+           ABORT
+        ENDIF
+     ENDIF
+  ENDIF
+
+  Beta = sum(beta[i],i,1,6)
+ENDIF
+
+#************************************************************
+# Ecuaciones de cinética puntual
+#************************************************************
+
+#**********
+#  Si se corre a 1 grupo de precursores...
+ENTRO = ENTRO * 1
+IF N=1 
+   IF ENTRO=0
+      lambda[1] = Beta/(sum(beta[i]/lambda[i],i,1,6))
+      beta[1] = Beta
+      ENTRO = 1
+   ENDIF
+ENDIF
+#**********
+
+
+#**********
+# Si la condición inicial en precursores es de equilibrio
+VECTOR C SIZE N
+IF Cinicial<0
+   C_0 = n_0*beta[i]/Lambda/lambda[i]
+ELSE
+   C_0 = Cinicial
+ENDIF
+#**********
+
+## Un poco de magia para evitar errores de integración
+min_dt = 1e-3
+max_dt = 1
+rel_error = 1e-3
+## Fin de la magia
+
+
+#************************************************************
+# Definición de las ecuaciones diferenciales a resolver
+#************************************************************
+VECTOR C2 SIZE N
+# Condiciones iniciales con realimentación
+n2_0 = n_0 # neutrones con realimentación por potencia
+C2_0[i] = C_0[i] # precursores con realimentación por potencia
+
+# Reactividad de realimentación por potencia
+Rho2 = Alfa_Pot/1e5*(n2/n2_0-1)
+
+PHASE_SPACE n C n2 C2
+
+# Ecuación para la población de neutrones sin realimentación
+n_dot .= (Rho-Beta)/Lambda*n+sum(lambda[i]*C[i],i,1,N)
+# Ecuación para la concentración de cada grupo de precursores, 
+# sin realimentación
+C_dot[i] .= beta[i]*n/Lambda-lambda[i]*C[i]
+
+
+# Neutrones con realimentación
+n2_dot .= (Rho-Beta+Rho2)/Lambda*n2+sum(lambda[i]*C2[i],i,1,N)
+# Precursores con realimentación
+C2_dot[i] .= beta[i]*n2/Lambda-lambda[i]*C2[i]
+
+
+
+PRINT t n n2

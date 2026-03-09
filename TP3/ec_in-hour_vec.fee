@@ -1,0 +1,100 @@
+# TP 3 de Física de reactores, Cinética Puntual
+# Cátedra de Física de Reactores: Aníbal Blanco, Roberto Maturana, Federico Mezio, Gustavo Saravia
+# Input desarrollado por Héctor Lestani y Alexis Weir
+# Resolución de la Ecuación In-Hour
+# 
+# Argumentos de entrada:
+# 1: tipo de combustible: 1=U235 2=U233 3=Pu239
+#
+# Vectores de salida: 
+# (hay que comentar y descomentar líneas al final para cambiar de opción)
+# Opción 1:
+#   1: Los polos de N(s), en el rango -3.5<w<0.5
+#   2: Reactividad correspondiente
+# Opción 2
+#   1: Los polos de N(s), en el rango -0.99*lambda(1)<w<5*lambda(1)
+#   2: Reactividad correspondiente
+
+#************************************************************
+# Implementación de los argumentos de entrada
+#************************************************************
+# Por defecto se elige U235 (tipo 1)
+DEFAULT_ARGUMENT_VALUE 1 1
+tipoCombustible = $1
+
+
+#************************************************************
+# Definición de vectores
+#************************************************************
+I = 6                   # Se va a trabajar con 6 grupos de precursores
+VECTOR beta   SIZE I    # vector donde se guarda la fracción de cada grupo de neutrones retardados
+VECTOR lambda SIZE I    # vector donde se guarda la vida media de cada grupo de neutrones retardados
+VECTOR c      SIZE I    # vector donde se guarda la concentración de cada grupoi de neutrones retardados
+VECTOR w      SIZE I+1  # vector donde se guardan los polos de la ecuación de N(s)
+VECTOR A      SIZE I+1  # vector donde se guardan los residuos de la ecuación de N(s)
+
+
+#************************************************************
+# Declaración de datos nucleares
+#************************************************************
+# Vida media n's prompt [s]
+LAMBDA = 100e-6  # 100 microsegundos
+# Vida media precursores [1/s]
+VECTOR lambdaU235  SIZE 6 DATA 0.01240 0.03050 0.11100 0.30100 1.14000 3.01000
+VECTOR lambdaU233  SIZE 6 DATA 0.01260 0.03370 0.13900 0.32500 1.13000 2.50000
+VECTOR lambdaPu239 SIZE 6 DATA 0.01280 0.03010 0.12400 0.32500 1.12000 2.69000 
+# Fracción de neutrones retardados
+VECTOR betaU235  SIZE 6 DATA 0.000215 0.001424 0.001274 0.002568 0.000748 0.000273
+VECTOR betaU233  SIZE 6 DATA 0.00023  0.00080  0.00067  0.00074  0.00014  0.00009 
+VECTOR betaPu239 SIZE 6 DATA 0.00007  0.00063  0.00045  0.00069  0.00018  0.00090 
+
+# Asigno los betas y lambdas en función del tipo de combustible elegido
+IF tipoCombustible=1 #Entonces es U235
+   # PRINT "Trabajando con U235"
+   lambda[i] = lambdaU235[i]
+   beta[i] = betaU235[i]
+ELSE
+   IF tipoCombustible=2 #Entonces es U233
+      # PRINT "Trabajando con U233"
+      lambda[i] = lambdaU233[i]
+      beta[i] = betaU233[i]
+   ELSE
+      IF tipoCombustible=3 #Entonces es Pu239
+         # PRINT "Trabajando con Pu239"
+         lambda[i] = lambdaPu239[i]
+         beta[i] = betaPu239[i]
+      ELSE
+         PRINT "Error!! el tipo de combustible $1 no está en la lista"
+         ABORT
+      ENDIF
+   ENDIF
+ENDIF
+
+beta1grupo = sum(beta[i],i,1,6)
+lambda1grupo = beta1grupo/(sum(beta[i]/lambda[i],i,1,6))
+#PRINT_VECTOR beta lambda       # con esta línea se puede mostrar en pantalla los vectores de beta y lambda
+#PRINT beta1grupo lambda1grupo  # con esta línea se puede mostrar en pantalla el beta total y el lambda equialente
+
+
+#************************************************************
+# Definición y cálculo de condiciones iniciales de equilibrio
+#************************************************************
+n_0 = 1                                    # Se normaliza a un neutrón inicial
+c_0[i] = beta[i]/(LAMBDA*lambda[i]) * n_0  # Concentración de equilibrio de los precursores
+
+#************************************************************
+# Definición de la relación entre la reactividad y "s" (Ecuación In Hour)
+#************************************************************
+reactividad(s) := LAMBDA*s + sum((beta[i]*s)/(s+lambda[i]), i, 1, I)
+
+#************************************************************
+# Presentación en pantalla de la reactividad en función de 
+# "s", o sea, se invirtieron los eje de las soluciones de 
+# Nordheim
+#************************************************************
+# Opción 1: Todo el rango posible de w
+PRINT_FUNCTION reactividad MIN -3.5  MAX 0.5 STEP 0.5/10000
+
+# Opción 2: El rango relacionado al mayor de los polos
+#PRINT_FUNCTION reactividad MIN -0.99*lambda[1]  MAX 5*lambda[1] STEP lambda[1]/10000
+
