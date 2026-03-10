@@ -115,14 +115,14 @@ ENDIF
 # Si la condición inicial en precursores es de equilibrio
 VECTOR C SIZE N
 IF Cinicial<0
-   C_0 = n_0*beta[i]/Lambda/lambda[i]
+   C_0[i] = n_0/Lambda*beta[i]/lambda[i]
 ELSE
-   C_0 = Cinicial
+   C_0[i] = Cinicial
 ENDIF
 #**********
 
 ## Un poco de magia para evitar errores de integración
-min_dt = 1e-3
+min_dt = 1e-15
 max_dt = 1
 rel_error = 1e-3
 ## Fin de la magia
@@ -154,5 +154,8 @@ n2_dot .= (Rho-Beta+Rho2)/Lambda*n2+sum(lambda[i]*C2[i],i,1,N)
 C2_dot[i] .= beta[i]*n2/Lambda-lambda[i]*C2[i]
 
 
+IF in_static
+  PRINT "\#t" "n_sinRealim" "n_conRealim"
+ENDIF
 
 PRINT t n n2

@@ -123,14 +123,14 @@ ENDIF
 # Si la condición inicial en precursores es de equilibrio
 VECTOR C SIZE N
 IF Cinicial<0
-   C_0 = n_0*beta[i]/Lambda/lambda[i]
+   C_0[i] = n_0/Lambda*beta[i]/lambda[i]
 ELSE
-   C_0 = Cinicial
+   C_0[i] = Cinicial
 ENDIF
 #**********
 
 ## Un poco de magia para evitar errores de integración
-min_dt = 1e-3
+min_dt = 1e-15
 max_dt = 1
 rel_error = 1e-3
 ## Fin de la magia
@@ -147,5 +147,12 @@ n_dot .= (Rho-Beta)/Lambda*n+sum(lambda[i]*C[i],i,1,N)
 # Ecuación para la concentración de cada grupo de precursores
 C_dot[i] .= beta[i]*n/Lambda-lambda[i]*C[i]
 
+IF in_static
+  IF N=1
+    PRINT "\#t" "C" "n(t)"
+  ELSE
+    PRINT "\#t" "C1" "C2" "C3" "C4" "C5" "C6" "n(t)"
+  ENDIF
+ENDIF
 
 PRINT t C  n
