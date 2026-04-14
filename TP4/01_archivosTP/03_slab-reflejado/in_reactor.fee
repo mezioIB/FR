@@ -1,0 +1,94 @@
+# semi-slab reflejado, a dos grupos de energía
+#
+# Los argumentos de entrada son:
+#  1: Imprime en pantalla o en archivos. Puede ser 0 (archivo) o {1} (pantalla)
+DEFAULT_ARGUMENT_VALUE 1 1
+
+# Primero se define el problema
+PROBLEM neutron_diffusion 1D GROUPS 2
+
+# Luego se carga la malla no estructurada
+READ_MESH out.slab.msh DIMENSIONS 1
+
+# Ingresamos el archivo de materiales
+INCLUDE ../2grupos.feeMat
+# definimos un material con propiedades uniformes llamado fuel
+# que abarca la entidad fisica definida como núcleo en la malla ,
+MATERIAL fuel LABEL nucleo
+MATERIAL reflector LABEL reflector
+
+# Se asignan las condiciones de borde:
+BC left  mirror
+BC right null
+
+# Pedimos a FeenoX que resuleva el problema
+# Por defecto el autovalor se guarda en la variable Keff
+# y los autovectores en phi1 y phi2
+SOLVE_PROBLEM
+
+#----------------------------------------------------------------------------------------------------
+# Cálculos finales
+#----------------------------------------------------------------------------------------------------
+# Buscamos el rango del problema
+FIND_EXTREMA x MIN x1 MAX x2
+anchoSlab = x2 - x1
+
+# Calculo el factor de pico, teniendo en cuenta que solo los neutrones térmicos producen fisiones
+# Cálculo del área del dominio
+fracDominio = 2
+INTEGRATE 1*fracDominio OVER nucleo CELLS RESULT areaNucleo
+
+# Calculo el factor de pico, teniendo en cuenta que solo los neutrones térmicos producen fisiones
+# https://www.seamplex.com/feenox/doc/feenox-manual.html#integrate
+INTEGRATE phi2(x)*fracDominio OVER nucleo CELLS RESULT integralFlujoTermico
+FIND_EXTREMA phi2 OVER nucleo NODES MAX flujoMax
+fp = flujoMax*areaNucleo/integralFlujoTermico
+
+# Calculamos la reactividad en pcm
+rho = ((keff-1)/keff)*1e5
+
+#----------------------------------------------------------------------------------------------------
+# Dos formas de procesar los resultados: con 1 se muestra en pantalla, y con 0 se envía a un archivo
+#----------------------------------------------------------------------------------------------------
+IF $1
+    # Presentamos los resultados en pantalla
+    # Los valores son rho [pcm], factor de pico, tiempo de cáculo [s] (que puede ser cpu_time o wall_time), y memoria máxima usada [Gigabytes]
+    PRINT SEP " " %07.1f rho %.5f fp cpu_time() memory()
+ELSE
+    # Exportamos los resultados a archivos
+    # Calculamos la relación espectral
+    Espectro(x) := phi2(x)/phi1(x)
+
+    # Se guardan los resultados en un archivo de texto
+    deltaX=(x2-x1)/1001
+    PRINT_FUNCTION phi1 phi2 Espectro HEADER FILE_PATH out.slab.dat MIN x1+deltaX MAX x2-deltaX STEP deltaX
+
+    # Si se quiere guardar el resultado de las mallas en un archivo. Se puede guardar en los formatos:
+    #   gmsh: Para ser leido con el gmsh
+    #   vtk: para ser leído con el ParaView
+    WRITE_MESH out_flujos.msh FILE_FORMAT gmsh phi1 phi2 Espectro
+ENDIF
+
+IF 0
+    #----------------------------------------------------------------------------------------------------
+    # Opcional: calculo de los autovalores y autovectores
+    #----------------------------------------------------------------------------------------------------
+    # Cálculo de los autovalores y autovectores en el núcleo
+    aE(x) = -(Sigma_a1(x)+Sigma_s1.2(x))/D1(x)
+    bE(x) = nuSigma_f2(x)/D1(x)
+    cE(x) = Sigma_s1.2(x)/D2(x)
+    dE(x) = -Sigma_a2(x)/D2(x)
+    TrE(x) = aE(x)+dE(x) #traza de la matriz energía
+    detE(x) = (aE(x)*dE(x)) - (bE(x)*cE(x)) #determinante de la matriz energía
+    B(x) = sqrt(  TrE(x)+sqrt(TrE(x)^2-4*detE(x)) )/sqrt(2)
+    mu(x) = sqrt(-TrE(x)+sqrt(TrE(x)^2-4*detE(x)) )/sqrt(2)
+    Sn1(x) = Sigma_s1.2(x)/(Sigma_a2(x)+D2(x)*B(x)^2)
+    # Cálculo de los autovalores y autovectores en los reflectores
+    l3(x) = sqrt(-aE(x))
+    l4(x) = sqrt(-dE(x))
+    S3(x) = Sigma_s1.2(x)/(D2(x)*(l4(x)^2-l3(x)^2))
+    PRINT TEXT "\# 1/l1      = " %.2f 1/B(x1+0.001) 1/l3(x2-0.001)
+    PRINT TEXT "\# 1/l2      = " %.2f 1/mu(x1+0.001) 1/l4(x2-0.001)
+    PRINT TEXT "\# 1/(l2-l1) = " %.2f 1/(B(x1+0.001)+mu(x1+0.001)) 1/(l4(x2-0.001)-l3(x2-0.001))
+    PRINT TEXT "\# Sx        = " %.4f Sn1(x1+0.001) S3(x2-0.001)
+ENDIF

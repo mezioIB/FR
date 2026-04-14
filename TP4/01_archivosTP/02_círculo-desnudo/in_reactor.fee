@@ -1,0 +1,76 @@
+# slab desnudo, a dos grupos de energía
+#
+# Los argumentos de entrada son:
+#  1: Condición de contorno. Pueden ser  vacuum | {null} | mirror
+#  2: Imprime en pantalla o en archivos. Puede ser 0 (archivo) o {1} (pantalla)
+DEFAULT_ARGUMENT_VALUE 1 null
+DEFAULT_ARGUMENT_VALUE 2 1
+
+# Primero se define el problema
+PROBLEM neutron_diffusion 2D GROUPS 2 ALLOW_UNRESOLVED_BCS
+
+# Luego se carga la malla no estructurada
+READ_MESH out_malla.msh DIMENSIONS 2
+
+# Ingresamos el archivo de materiales
+INCLUDE ../2grupos.feeMat
+# definimos un material con propiedades uniformes llamado fuel
+# que abarca la entidad fisica definida como núcleo en la malla ,
+MATERIAL fuel LABEL nucleo
+
+# Vemos qué fracción de círculo es
+FIND_EXTREMA x MAX radio
+areaNucleo=pi*radio^2
+INTEGRATE 1 OVER nucleo CELLS RESULT areaCirc
+fracCirc=round(areaNucleo/areaCirc)
+
+# Se asignan las condiciones de borde:
+BC exterior $1
+IF fracCirc>1
+  BC lado1 mirror
+  BC lado2 mirror
+ENDIF
+
+# Pedimos a FeenoX que resuleva el problema
+# Por defecto el autovalor se guarda en la variable Keff
+# y los autovectores en phi1 y phi2
+SOLVE_PROBLEM
+
+#----------------------------------------------------------------------------------------------------
+# Cálculos finales
+#----------------------------------------------------------------------------------------------------
+# Calculo el factor de pico, teniendo en cuenta que solo los neutrones térmicos producen fisiones
+INTEGRATE phi2(x,y)*fracCirc OVER nucleo CELLS RESULT integralFlujoTermico
+VAR flujoMax
+FIND_EXTREMA phi2 OVER nucleo NODES MAX flujoMax
+fp = flujoMax*areaNucleo/integralFlujoTermico
+
+# Calculamos la reactividad en pcm
+rho = ((keff-1)/keff)*1e5
+
+#----------------------------------------------------------------------------------------------------
+# Dos formas de procesar los resultados: con 1 se muestra en pantalla, y con 0 se envía a un archivo
+#----------------------------------------------------------------------------------------------------
+IF $2
+    # Presentamos los resultados en pantalla
+    # Los valores son rho [pcm], factor de pico, tiempo de cáculo [s] (que puede ser cpu_time o wall_time), y memoria máxima usada [Gigabytes]
+    PRINT SEP " " %07.1f rho %.5f fp cpu_time() memory()
+ELSE
+    # Exportamos los resultados a archivos
+    # Calculamos la relación espectral
+    Espectro(x,y) := phi2(x,y)/phi1(x,y)
+
+    # Se guardan los resultados en un archivo de texto
+    # Extraemos los perfiles a lo largo de una recta. La idea es que la recta pase lejos de los bordes del dominio
+    angXY = 2*pi/fracCirc / 2
+    phi1_corte(r) := phi1(r*cos(angXY),r*sin(angXY))
+    phi2_corte(r) := phi2(r*cos(angXY),r*sin(angXY))
+    Espectro_corte(r) := Espectro(r*cos(angXY),r*sin(angXY))
+    deltaR=radio/1001
+    PRINT_FUNCTION phi1_corte phi2_corte Espectro_corte HEADER FILE_PATH out.slab.dat MIN 0 MAX radio-deltaR STEP deltaR
+
+    # Si se quiere guardar el resultado de las mallas en un archivo. Se puede guardar en los formatos:
+    #   gmsh: Para ser leido con el gmsh
+    #   vtk: para ser leído con el ParaView
+    WRITE_MESH out_flujos.vtk FILE_FORMAT vtk phi1 phi2 Espectro
+ENDIF

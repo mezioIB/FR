@@ -1,0 +1,52 @@
+# esfera reflejada, a dos grupos de energía
+
+# Los argumentos de entrada son:
+# 1: radio de la esfera
+DEFAULT_ARGUMENT_VALUE 1 33.7
+radio = $1
+# 2: ancho del reflector
+DEFAULT_ARGUMENT_VALUE 2 30
+espRefl = $2
+# 3: fracción del círculo
+DEFAULT_ARGUMENT_VALUE 3 36
+fracEsf = $3
+# 4: longitud característica del mallado en el centro
+DEFAULT_ARGUMENT_VALUE 4 2
+lcC = $4
+# 5: longitud característica del mallado en la interface
+DEFAULT_ARGUMENT_VALUE 5 2
+lcI = $5
+# 4: longitud característica del mallado en el borde
+DEFAULT_ARGUMENT_VALUE 4 2
+lcB = $6
+
+
+
+PROBLEM neutron_diffusion 3D GROUPS 2
+
+#Malla no estructurada definida en el archivo .msh
+READ_MESH out.esfera_reflejada.msh DIMENSIONS 3 #NAME dominio
+
+# Ingresamos el archivo de materiales
+INCLUDE 2grupos.feeMat
+
+# Y asignamos los materiales a las entidades de la malla
+MATERIAL fuel LABEL nucleo
+MATERIAL reflector  LABEL reflector
+#Las condiciones de borde con vacío pueden ser  vacuum|null
+BC exterior null
+# En el caso de las fracciones de círculo, hace falta además reflejar el corte
+IF fracEsf>1
+  BC lados mirror
+ENDIF
+
+# pedimos a milonga que resuelva el problema
+SOLVE_PROBLEM
+
+rho = ((keff-1)/keff)*1e5
+
+# y una vez que fue resuelto, imprimimos el resultado
+PRINT "Radio\tEspRefl\tfracEsf\tkefectivo\trho[pcm]"
+PRINT SEP "\t" "%0.2f" radio espRefl fracEsf "%+5f" keff "%0.2f" rho
+
+INCLUDE esfera_reflejada_Complementario.fee

@@ -1,0 +1,41 @@
+# Problema de difusión unidimensional a un grupo de energia
+# sobre la malla no estructurada definida en slab.msh
+
+# Primero se define el problema
+PROBLEM neutron_diffusion 1D GROUPS 1
+
+# Luego se carga la malla
+READ_MESH out.slab.msh DIMENSIONS 1
+
+#
+a = 100
+# Definimos un material llamado fuel que abarca toda en
+# entidad fisica fuel definida en slab.geo
+MATERIAL fuel Sigma_a1=0.1  nuSigma_f1=0.101 D1=1.0
+
+# Especificamos condiciones de borde de flujo nulo
+BC left null
+BC right null
+
+# Pedimos a FeenoX que resuleva el problema
+# Por defecto el autovalor se guarda en la variable Keff
+# y los autovectores en phi1
+SOLVE_PROBLEM
+
+# Definimos al funciones y operaciones para comparar
+# los resultados con valores teóricos
+kreal = nuSigma_f1(0)/(Sigma_a1(0)+D1(0)*(pi/a)^2)
+flux(x) := pi/2*sin(pi*x/a)
+xmax = func_min(-phi1(x),x,0,a)
+fp = phi1(xmax)/(1/a * integral(phi1(x),x,0,a))
+fpt = pi/2
+
+FIND_EXTREMA x MIN xmin MAX xmax
+# Imprimimos los resultados en la salida estandar
+PRINT_FUNCTION phi1 flux dphi1dx HEADER FILE_PATH out.slab.dat MIN xmin MAX xmax STEP (xmax-xmin)/101
+PRINT TEXT "\# keff       = " %.8f keff
+PRINT TEXT "\# keff_t     = " %.8f kreal
+PRINT TEXT "\# keff error = " %+.2e (keff-kreal)/keff
+PRINT TEXT "\# fp         = " %.8f fp
+PRINT TEXT "\# fp_t        = " %.8f fpt
+PRINT TEXT "\# fp error  = " %+.2e (fp-fpt)/fpt

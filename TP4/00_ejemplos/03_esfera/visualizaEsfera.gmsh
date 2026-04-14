@@ -1,0 +1,42 @@
+// https://gitlab.onelab.info/gmsh/gmsh/blob/gmsh_4_8_3/tutorial/t8.geo
+// https://gmsh.info/doc/texinfo/gmsh.html
+
+General.Trackball = 0;
+General.RotationX = 0; General.RotationY = 0; General.RotationZ = 0;
+General.RotationCenterX = 0; General.RotationCenterY = 0; General.RotationCenterZ = 0; 
+//General.RotationCenterGravity = 1;
+General.Color.Background = White; General.Color.Foreground = Black;
+General.Color.Text = Black;
+General.Orthographic = 0;
+General.Axes = 0; General.SmallAxes = 1;
+
+v0 = PostProcessing.NbViews-4;
+//v0 = 01;
+
+View[v0].IntervalsType = 2;
+View[v0].OffsetY = 0;
+View[v0].RaiseY = 100;
+View[v0].Light = 1;
+View[v0].ShowScale = 0;
+View[v0].SmoothNormals = 1;
+
+
+General.GraphicsWidth = General.MenuWidth + 640;
+General.GraphicsHeight = 480;
+View "comments" {
+  // Add a text string in window coordinates, 10 pixels from the left and 10
+  // pixels from the bottom, using the `StrCat' function to concatenate strings:
+  T2(1e5, 20, TextAttributes("Align", "Center", "Font", "Screen", "FontSize", "30")){ "Esfera reflejada" };
+};
+
+Color Green{Volume {101};}
+Color Orange{Volume {201};}
+
+Hide "*";
+Show { Volume {101}; }
+Show { Volume {201}; }
+
+General.Clip0D = 30;
+Mesh.Clip = 1;
+
+

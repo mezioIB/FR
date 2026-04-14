@@ -1,0 +1,102 @@
+# semi-slab reflejado, a dos grupos de energía
+#
+# Los argumentos de entrada son:
+#  1: Imprime en pantalla o en archivos. Puede ser 0 (archivo) o {1} (pantalla)
+DEFAULT_ARGUMENT_VALUE 1 1
+
+# Primero se define el problema
+PROBLEM neutron_diffusion 3D GROUPS 2
+
+# Luego se carga la malla no estructurada
+READ_MESH out.slab.msh DIMENSIONS 3
+
+# Ingresamos el archivo de materiales
+INCLUDE ../2grupos.feeMat
+# definimos un material con propiedades uniformes llamado fuel
+# que abarca la entidad fisica definida como núcleo en la malla ,
+MATERIAL fuel LABEL nucleo
+MATERIAL reflector LABEL reflector
+
+# Se asignan las condiciones de borde:
+BC centro  mirror
+BC bordes null
+
+# Pedimos a FeenoX que resuleva el problema
+# Por defecto el autovalor se guarda en la variable Keff
+# y los autovectores en phi1 y phi2
+SOLVE_PROBLEM
+
+#----------------------------------------------------------------------------------------------------
+# Cálculos finales
+#----------------------------------------------------------------------------------------------------
+# Calculo el factor de pico, teniendo en cuenta que solo los neutrones térmicos producen fisiones
+# Cálculo del área del dominio
+fracDominio = 2*2*2
+INTEGRATE 1*fracDominio OVER nucleo CELLS RESULT areaNucleo
+
+# Calculo el factor de pico, teniendo en cuenta que solo los neutrones térmicos producen fisiones
+# https://www.seamplex.com/feenox/doc/feenox-manual.html#integrate
+INTEGRATE phi2(x,y,z)*fracDominio OVER nucleo CELLS RESULT integralFlujoTermico
+FIND_EXTREMA phi2 OVER nucleo NODES MAX flujoMax
+fp = flujoMax*areaNucleo/integralFlujoTermico
+
+# Calculamos la reactividad en pcm
+rho = ((keff-1)/keff)*1e5
+
+#----------------------------------------------------------------------------------------------------
+# Dos formas de procesar los resultados: con 1 se muestra en pantalla, y con 0 se envía a un archivo
+#----------------------------------------------------------------------------------------------------
+IF $1
+    # Presentamos los resultados en pantalla
+    # Los valores son rho [pcm], factor de pico, tiempo de cáculo [s] (que puede ser cpu_time o wall_time), y memoria máxima usada [Gigabytes]
+    PRINT SEP " " %07.1f rho %.5f fp cpu_time() memory()
+ELSE
+    # Exportamos los resultados a archivos
+
+
+    # Calculamos la relación espectral
+    Espectro(x,y,z) := phi2(x,y,z)/phi1(x,y,z)
+
+    # Proponemos phi(x,y,z,E)=fxE(x,E)*fy(y)*fz(z)
+    xRef=5 # Posición arbitraria x para la referencia. x tiene que estar en [x1,x2]
+    yRef=5
+    zRef=5
+    fxE1(x) = phi1(x,yRef,zRef)
+    fxE2(x) = phi2(x,yRef,zRef)
+    EspectroX(x) = fxE2(x)/fxE1(x)  #Espectro(x,yRef,zRef)
+    fy(y) = phi2(xRef,y,zRef)/phi2(xRef,yRef,zRef)
+    fz(z) = phi2(xRef,yRef,z)/phi2(xRef,yRef,zRef)
+
+    umbral=1e-4 #para filtrar el cálculo del error relativo donde el flujo sea muy bajo
+    error1(x,y,z) = abs(phi1(x,y,z)-fxE1(x)*fy(y)*fz(z)) / phi1(x,y,z) *100 * (phi1(x,y,z)>umbral)
+    error2(x,y,z) = abs(phi2(x,y,z)-fxE2(x)*fy(y)*fz(z)) / phi2(x,y,z) *100 * (phi2(x,y,z)>umbral)
+
+    # Se guardan los resultados en un archivo de texto
+    # Buscamos el rango del problema
+    FIND_EXTREMA x MIN x1 MAX x2
+    FIND_EXTREMA y MIN y1 MAX y2
+    FIND_EXTREMA z MIN z1 MAX z2
+    deltaX=(x2-x1)/1001
+    deltaY=(y2-y1)/1001
+    deltaZ=(z2-z1)/1001
+    PRINT_FUNCTION fxE1 fxE2 EspectroX HEADER FILE_PATH out.slab.X.dat MIN x1 MAX x2-deltaX STEP deltaX
+    PRINT_FUNCTION fy HEADER FILE_PATH out.slab.Y.dat MIN y1 MAX y2-deltaY STEP deltaY
+    PRINT_FUNCTION fz HEADER FILE_PATH out.slab.Z.dat MIN z1 MAX z2-deltaZ STEP deltaZ
+
+    # Si se quiere guardar el resultado de las mallas en un archivo. Se puede guardar en los formatos:
+    #   gmsh: Para ser leido con el gmsh
+    #   vtk: para ser leído con el ParaView
+    WRITE_MESH out_flujos.vtk FILE_FORMAT vtk phi1 phi2 Espectro error1 error2
+
+    # Calculamos el error promedio
+    INTEGRATE 1 CELLS RESULT volReactor
+    INTEGRATE error1 RESULT errorProm1
+    INTEGRATE error2 RESULT errorProm2
+    #mascaraSinBorde(x,y,z) = (x<(x2-deltaX)) * (y<(y2-deltaY)) * (z<(z2-deltaZ))
+    FIND_EXTREMA error1 NODES MAX errMax1
+    FIND_EXTREMA error2 NODES MAX errMax2
+    PRINT "grupo  " "error_prom" "error_máx"
+    PRINT "rápido " (errorProm1/volReactor) errMax1
+    PRINT "térmico" (errorProm2/volReactor) errMax2
+ENDIF
+

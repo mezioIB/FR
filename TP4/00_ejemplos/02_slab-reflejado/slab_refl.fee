@@ -1,0 +1,53 @@
+# Problema de difusión unidimensional a dos grupo de energia
+# sobre la malla no estructurada definida en out.slab_refl.msh
+
+# Definimos el problema
+# https://seamplex.com/feenox/doc/feenox-manual.html#problem
+PROBLEM neutron_diffusion 1D GROUPS 2
+
+#Cargamos la malla
+READ_MESH out.slab_refl.msh
+
+# Ingresamos el archivo de materiales
+#https://seamplex.com/thesis/html/050-implementacion/README.html#inicializaci%C3%B3n
+INCLUDE slab_refl.2g.feeMat
+
+# Especificamos condiciones de borde de flujo nulo
+BC left null
+BC right null
+
+# Pedimos a FeenoX que resuleva el problema.
+# Por defecto el factor de multiplicación se guarda
+# en la variable Keff y los flujos en phi1 y phi2
+SOLVE_PROBLEM
+
+# Definimos una función que representa el espectro S1
+Espectro(x) = phi2(x)/phi1(x)
+
+FIND_EXTREMA x MIN xin MAX xax
+xmin = xin + (xax-xin)/1000
+xmax = xax - (xax-xin)/1000
+
+# Imprimimos los resultados en la salida estandar
+PRINT_FUNCTION phi1 phi2 Espectro(x) HEADER FILE_PATH out.slab_refl.dat MIN xmin MAX xmax STEP (xmax-xmin)/1001
+PRINT TEXT "\# keff     = " %.8f keff
+PRINT TEXT "\# rho      = " %.1f (keff-1)/keff*1e5 " pcm"
+
+# Cálculo de los autovalores y autovectores en el núcleo
+aE(x) = -(Sigma_a1(x)+Sigma_s1.2(x))/D1(x)
+bE(x) = nuSigma_f2(x)/D1(x)
+cE(x) = Sigma_s1.2(x)/D2(x)
+dE(x) = -Sigma_a2(x)/D2(x)
+TrE(x) = aE(x)+dE(x) #traza de la matriz energía
+detE(x) = (aE(x)*dE(x)) - (bE(x)*cE(x)) #determinante de la matriz energía
+B(x) = sqrt(  TrE(x)+sqrt(TrE(x)^2-4*detE(x)) )/sqrt(2)
+mu(x) = sqrt(-TrE(x)+sqrt(TrE(x)^2-4*detE(x)) )/sqrt(2)
+Sn1(x) = Sigma_s1.2(x)/(Sigma_a2(x)+D2(x)*B(x)^2)
+# Cálculo de los autovalores y autovectores en los reflectores
+l3(x) = sqrt(-aE(x))
+l4(x) = sqrt(-dE(x))
+S3(x) = Sigma_s1.2(x)/(D2(x)*(l4(x)^2-l3(x)^2))
+PRINT TEXT "\# 1/l3      = " %.2f 1/l3(xmin) 1/B(1) 1/l3(xmax)
+PRINT TEXT "\# 1/l4      = " %.2f 1/l4(xmin) 1/mu(1) 1/l4(xmax)
+PRINT TEXT "\# 1/(l3-l4) = " %.2f 1/(l4(xmin)-l3(xmin)) 1/(B(1)+mu(1)) 1/(l4(xmax)-l3(xmax))
+PRINT TEXT "\# S3        = " %.2f S3(xmin) Sn1(1) S3(xmax)

@@ -1,0 +1,21 @@
+Este directorio contiene los archivos necesarios para realizar el trabajo práctico N° 4 de la asignatura Física de Reactores, que consiste en utilizar el programa "FeenoX" para calcular reactores homogéneos desnudos o reflejados a partir de secciones eficaces macroscópicas.
+
+Primeros pasos:
+En el directorio "00_ejemplos", hay dos ejemplos para probar el uso del FeenoX. Para correrlos, dentro de cada carpeta hay un script llamado "correEjemplo.sh", con el cual se pueden obtener los resultados de los mismos.
+Pueden encontrar más ejemplos en la página oficial de FeenoX:
+https://github.com/seamplex/feenox/tree/main/examples
+
+
+Para simular el slab desnudo (de ancho 40cm, longitud característica de 1cm, y condición de contorno de flujo nulo), hay que ingresar a la carpeta "01_slab-desnudo" y ejecutar:
+./script.01_prueba.sh 40 1 null
+
+En caso de querer ver los resultados con el gnuplot, puede ver el ejemplo en el script.02_grafica.sh
+
+El script.03_bucaCriticidad.sh les puede servir si quieren encontrar un tamaño crítico, ya que realiza una búscqueda dicotómica, minimizando la reactividad. Dentro de este script también hay un ejemplo de cómo realizar un loop, para cambiar por ejemplo la longitudad característica de la malla. Los resultados de este script se pueden graficar con script.03_grafica.sh
+
+En caso de querer graficarlos con el gmsh, se puede ejecutar
+gmsh out_flujos.msh
+
+Recuerden que en las primeras líneas de cada archivo de entrada para el FeenoX y de los script hay comentarios
+
+Para convertir un archivo en ejecutable, pueden hacerlo por ejemplo con el siguiente comando: chmod +x file.sh

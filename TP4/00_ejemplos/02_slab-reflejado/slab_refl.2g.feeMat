@@ -1,0 +1,14 @@
+# Definimos tres materiales llamado fuel, left_refl y rigth_refl que cada una
+# la correspondiente entidad fisica definida en slab_refl.geo
+MATERIAL fuel {
+D1=1.5  Sigma_a1=0.01  Sigma_s1.2=0.02
+D2=0.4  Sigma_a2=0.08  nuSigma_f2=0.135
+}
+MATERIAL left_refl {
+D1=2.0  Sigma_a1=0.00  Sigma_s1.2=0.04
+D2=0.3  Sigma_a2=0.02
+}
+MATERIAL right_refl {
+D1=2.0  Sigma_a1=0.00  Sigma_s1.2=0.05
+D2=0.3  Sigma_a2=0.01
+}

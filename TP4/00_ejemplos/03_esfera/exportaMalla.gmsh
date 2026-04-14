@@ -1,0 +1,71 @@
+// https://gitlab.onelab.info/gmsh/gmsh/blob/gmsh_4_8_3/tutorial/t8.geo
+// https://gmsh.info/doc/texinfo/gmsh.html
+
+General.Trackball = 0;
+General.RotationX = 10; General.RotationY = 0; General.RotationZ = 10;
+General.RotationCenterX = 0; General.RotationCenterY = 0; General.RotationCenterZ = 0; 
+//General.RotationCenterGravity = 1;
+General.Color.Background = White; General.Color.Foreground = Black;
+General.Color.Text = Black;
+General.Orthographic = 0;
+General.Axes = 0; General.SmallAxes = 1;
+
+v0 = PostProcessing.NbViews-4;
+//v0 = 01;
+
+View[v0].IntervalsType = 2;
+View[v0].OffsetY = 0;
+View[v0].RaiseY = 100;
+View[v0].Light = 1;
+View[v0].ShowScale = 0;
+View[v0].SmoothNormals = 1;
+
+
+General.GraphicsWidth = General.MenuWidth + 400;
+General.GraphicsHeight = 400;
+View "comments" {
+  // Add a text string in window coordinates, 10 pixels from the left and 10
+  // pixels from the bottom, using the `StrCat' function to concatenate strings:
+  T2(1e5, 20, TextAttributes("Align", "Center", "Font", "Screen", "FontSize", "30")){ "Esfera reflejada" };
+};
+
+Color Green{Volume {101};}
+Color Orange{Volume {201};}
+
+Hide "*";
+Show { Volume {101}; }
+Show { Volume {201}; }
+
+General.Clip0A = -1; General.Clip0B = 0; General.Clip0C = -1;
+General.Clip0D = 60;
+Mesh.Clip = 0;
+
+frames = 20;
+contador = 0;
+
+Sleep 0.01;
+Draw;
+For num2 In {1:frames}
+  contador += 1;
+  // Incrementally rotate the scene
+  General.RotationY += 360/frames;
+  // Sleep for 0.01 second
+  Sleep 0.01;
+  Draw;
+  Print Sprintf("out.anim-%02g.png", contador);
+EndFor
+
+General.Clip0D = 60;
+Mesh.Clip = 1;
+General.RotationY = -20; General.RotationY = 10; General.RotationY = 10;
+For num2 In {1:frames}
+  contador += 1;
+  // Incrementally rotate the scene
+  General.Clip0D = 60*Cos(2*Pi*num2/frames);
+  // Sleep for 0.01 second
+  Sleep 0.01;
+  Draw;
+  Print Sprintf("out.anim-%02g.png", contador);
+EndFor
+
+Exit;

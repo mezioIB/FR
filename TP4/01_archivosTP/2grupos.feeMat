@@ -1,0 +1,13 @@
+#Material que constituye al núcleo del reactor
+MATERIAL fuel {
+  D1=1.30    Sigma_a1=0.003   Sigma_s1.2=0.127
+  D2=0.25    Sigma_a2=0.1     nuSigma_f2=0.11  }
+
+# Espectro de fisión
+chi[1] = 1.0
+chi[2] = 0.0
+
+# Material que contituye al reflector del reactor
+MATERIAL reflector {
+  D1=1.13    Sigma_a1=0.0     Sigma_s1.2=0.0419
+  D2=0.16    Sigma_a2=0.0197       }

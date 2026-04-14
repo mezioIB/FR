@@ -1,0 +1,41 @@
+# Cálculo del área del dominio
+INTEGRATE 1 OVER nucleo CELLS RESULT volNucleo
+
+# Calculo el factor de pico, teniendo en cuenta que solo los neutrones térmicos producen fisiones
+# https://www.seamplex.com/wasora/reference.html#mesh-related-keywords
+INTEGRATE phi2 OVER nucleo CELLS RESULT integralFlujoTermico
+VAR flujoMax
+#FIND_EXTREMA { <expression> | <function> } [ OVER <physical_group> ] [ MESH <mesh_identifier> ] [ NODES | CELLS | GAUSS ]  [ MIN <variable> ] [ MAX <variable> ] [ X_MIN <variable> ] [ X_MAX <variable> ] [ Y_MIN <variable> ] [ Y_MAX <variable> ] [ Z_MIN <variable> ] [ Z_MAX <variable> ] [ I_MIN <variable> ] [ I_MAX <variable> ]
+FIND_EXTREMA phi2 CELLS MAX flujoMax
+fp = flujoMax*volNucleo/integralFlujoTermico
+
+# Calculamos la relación espectral
+FUNCTION Espectro(x,y,z) = phi2(x,y,z)/phi1(x,y,z)
+
+
+# Guardamos las distribuciones
+#   En formato compatible con ParaView: vtk
+#   En formato compatible con GMsh: gmsh
+WRITE_MESH out.esfera.vtk phi1 phi2 Espectro FILE_FORMAT vtk
+#WRITE_MESH out.flujo3D.msh XS FILE_FORMAT gmsh
+
+# Obtenemos el mínimo de los tamaños
+lc = min(lcC, lcI, lcB)
+# Y el tamaño del reactor
+rReactor = radio + espRefl
+
+angXY = 30*pi/180
+angXZ = 2*pi/fracEsf / 2
+
+# Extraemos los perfiles a lo largo de una recta
+phi1_lineal(r) := phi1(r*cos(angXY)*cos(angXZ),r*sin(angXY)*cos(angXZ),r*sin(angXZ))
+phi2_lineal(r) := phi2(r*cos(angXY)*cos(angXZ),r*sin(angXY)*cos(angXZ),r*sin(angXZ))
+Espectro_lineal(r) := Espectro(r*cos(angXY)*cos(angXZ),r*sin(angXY)*cos(angXZ),r*sin(angXZ))
+PRINT_FUNCTION FILE out.flujo1D.txt phi1_lineal phi2_lineal Espectro_lineal HEADER MIN 0 MAX rReactor STEP lc
+
+# Extraemos los perfiles en un plano
+phi1_plano(x,y) := phi1(x,y,sqrt(x^2+y^2)*sin(angXZ))
+phi2_plano(x,y) := phi2(x,y,sqrt(x^2+y^2)*sin(angXZ))
+Espectro_plano(x,y) := Espectro(x,y,sqrt(x^2+y^2)*sin(angXZ))
+PRINT_FUNCTION FILE out.flujo2D.txt phi1_plano phi2_plano Espectro_plano HEADER MIN 0 0 MAX rReactor rReactor STEP lc lc
+
